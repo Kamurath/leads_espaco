@@ -286,6 +286,9 @@ export default function App() {
       };
     });
 
+    // Sort leads from most recent to oldest
+    allFetchedLeads.sort((a, b) => b.createdAtForSorting - a.createdAtForSorting);
+
     setLeads(allFetchedLeads);
     setLoadingStatuses(finalStatuses);
     setLastUpdated(new Date());
