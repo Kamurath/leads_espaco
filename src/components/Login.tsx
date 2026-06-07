@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Flame, Lock, User, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import { Session } from '../types';
+import { USERS, normalizeLoginText } from '../sharedStatic';
 
 interface LoginProps {
   onLoginSuccess: (session: Session) => void;
@@ -25,38 +26,24 @@ export default function Login({ onLoginSuccess, isDarkMode, onToggleDarkMode }: 
     setIsLoading(true);
     setError(null);
 
-    try {
-      const response = await fetch('/api/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          unit: username.trim(),
-          password: password.trim(),
-        }),
-      });
+    setTimeout(() => {
+      const normInput = normalizeLoginText(username);
+      const user = USERS.find(u => u.normalized === normInput);
 
-      const data = await response.json();
-
-      if (!response.ok || data.success === false) {
-        setError(data.message || 'Unidade ou senha incorreta.');
+      if (!user || user.password !== password.trim()) {
+        setError('Unidade ou senha incorreta.');
         setIsLoading(false);
         return;
       }
 
-      // Save token & session
       onLoginSuccess({
-        username: username.trim(),
-        role: data.user?.role,
-        unitName: data.user?.unitName,
-        token: data.token,
+        username: user.username,
+        role: user.role,
+        unitName: user.unitName,
+        token: `local_token_${user.username}_${Date.now()}`
       });
-
-    } catch (err) {
-      setError('Não foi possível conectar ao servidor. Verifique o deploy da API.');
       setIsLoading(false);
-    }
+    }, 400);
   };
 
   return (

@@ -1,5 +1,3 @@
-import crypto from 'crypto';
-
 // Normalization function (lowercases, removes accents, trims spaces)
 export function normalizeLoginText(text: string): string {
   if (!text) return '';
@@ -19,6 +17,22 @@ export interface UserConfig {
   spreadsheetId?: string;
 }
 
+export const SPREADSHEET_MAP: Record<string, string> = {
+  "Espaçolaser | Araripina": "13Y8znS97wp1Xbc-fq5UkeyoNsw1HoaLIzwjd4ffuOVc",
+  "Espaçolaser | Serra Talhada": "1ioAKFIXytP4HqTnWWVlZW7AelhidRkidGLlLfMuKyts",
+  "Espaçolaser | Garanhuns": "1wYdFrCOa5HxSNq7BdzB8zqmQWijMuHBgmAo-1s04PtQ",
+  "Espaçolaser | Cajazeiras": "1mQXWTw07CnNi2ZOpoW8-b7E0dC1go-6KjnZyZ8k0gCU",
+  "Espaçolaser | Vitória Sto Antão": "1SG90aLpvoNF1Ths6mauXFLdb_qquvljdEUZ7aOfrVvE",
+  "Espaçolaser | Livramento": "1ZotCiuaR_tY7Fb0KQwIZn6f44Ff-N-9n4_8_L4fllTs",
+  "Espaçolaser | Muriaé": "1p6WxAgwA1_wuDpXj3l7anpNQkOHiJ8xSW-lbWbQaY-4",
+  "Espaçolaser | Vilhena": "", // Sem ID ainda
+  "Espaçolaser | Corumbá": "1o3-V6BgsFaQSevosaTYV3Nl8fcfdjDhOAHO8kfrtZnI",
+  "Espaçolaser | Fortaleza": "1mQHf-If-QRXRqk3wM4XWVHQJkZsEeD9GJeBlTteZzKE",
+  "Espaçolaser | Plaza Macaé": "16smqQ6TWa2Jqv0xYnKUFAsgE1jlksFH3OV-DCbJefJE",
+  "Espaçolaser | Centro Macaé": "1IAKAmP3HQk89Nzh3C-86IyIrlldEcOtegG4ZlLirWzM",
+  "Espaçolaser | Quixadá": "1DHuCarVu-zAvNOa5ooaRDVFVswyphjplhU_0ipgpRgk"
+};
+
 export const USERS: UserConfig[] = [
   {
     username: "Trafegon",
@@ -33,7 +47,7 @@ export const USERS: UserConfig[] = [
     password: "1346",
     role: "unit",
     unitName: "Espaçolaser | Araripina",
-    spreadsheetId: "13Y8znS97wp1Xbc-fq5UkeyoNsw1HoaLIzwjd4ffuOVc"
+    spreadsheetId: SPREADSHEET_MAP["Espaçolaser | Araripina"]
   },
   {
     username: "Serra",
@@ -41,7 +55,7 @@ export const USERS: UserConfig[] = [
     password: "4679",
     role: "unit",
     unitName: "Espaçolaser | Serra Talhada",
-    spreadsheetId: "1ioAKFIXytP4HqTnWWVlZW7AelhidRkidGLlLfMuKyts"
+    spreadsheetId: SPREADSHEET_MAP["Espaçolaser | Serra Talhada"]
   },
   {
     username: "Garanhuns",
@@ -49,7 +63,7 @@ export const USERS: UserConfig[] = [
     password: "7649",
     role: "unit",
     unitName: "Espaçolaser | Garanhuns",
-    spreadsheetId: "1wYdFrCOa5HxSNq7BdzB8zqmQWijMuHBgmAo-1s04PtQ"
+    spreadsheetId: SPREADSHEET_MAP["Espaçolaser | Garanhuns"]
   },
   {
     username: "Cajazeiras",
@@ -57,7 +71,7 @@ export const USERS: UserConfig[] = [
     password: "2316",
     role: "unit",
     unitName: "Espaçolaser | Cajazeiras",
-    spreadsheetId: "1mQXWTw07CnNi2ZOpoW8-b7E0dC1go-6KjnZyZ8k0gCU"
+    spreadsheetId: SPREADSHEET_MAP["Espaçolaser | Cajazeiras"]
   },
   {
     username: "Vitória",
@@ -65,7 +79,7 @@ export const USERS: UserConfig[] = [
     password: "9864",
     role: "unit",
     unitName: "Espaçolaser | Vitória Sto Antão",
-    spreadsheetId: "1SG90aLpvoNF1Ths6mauXFLdb_qquvljdEUZ7aOfrVvE"
+    spreadsheetId: SPREADSHEET_MAP["Espaçolaser | Vitória Sto Antão"]
   },
   {
     username: "Livramento",
@@ -73,7 +87,7 @@ export const USERS: UserConfig[] = [
     password: "7452",
     role: "unit",
     unitName: "Espaçolaser | Livramento",
-    spreadsheetId: "1ZotCiuaR_tY7Fb0KQwIZn6f44Ff-N-9n4_8_L4fllTs"
+    spreadsheetId: SPREADSHEET_MAP["Espaçolaser | Livramento"]
   },
   {
     username: "Muriaé",
@@ -81,7 +95,7 @@ export const USERS: UserConfig[] = [
     password: "6325",
     role: "unit",
     unitName: "Espaçolaser | Muriaé",
-    spreadsheetId: "1p6WxAgwA1_wuDpXj3l7anpNQkOHiJ8xSW-lbWbQaY-4"
+    spreadsheetId: SPREADSHEET_MAP["Espaçolaser | Muriaé"]
   },
   {
     username: "Vilhena",
@@ -89,7 +103,7 @@ export const USERS: UserConfig[] = [
     password: "1247",
     role: "unit",
     unitName: "Espaçolaser | Vilhena",
-    spreadsheetId: "" // Ainda sem link
+    spreadsheetId: SPREADSHEET_MAP["Espaçolaser | Vilhena"]
   },
   {
     username: "Corumbá",
@@ -97,7 +111,7 @@ export const USERS: UserConfig[] = [
     password: "6582",
     role: "unit",
     unitName: "Espaçolaser | Corumbá",
-    spreadsheetId: "1o3-V6BgsFaQSevosaTYV3Nl8fcfdjDhOAHO8kfrtZnI"
+    spreadsheetId: SPREADSHEET_MAP["Espaçolaser | Corumbá"]
   },
   {
     username: "Fortaleza",
@@ -105,7 +119,7 @@ export const USERS: UserConfig[] = [
     password: "7183",
     role: "unit",
     unitName: "Espaçolaser | Fortaleza",
-    spreadsheetId: "1mQHf-If-QRXRqk3wM4XWVHQJkZsEeD9GJeBlTteZzKE"
+    spreadsheetId: SPREADSHEET_MAP["Espaçolaser | Fortaleza"]
   },
   {
     username: "Plaza",
@@ -113,7 +127,7 @@ export const USERS: UserConfig[] = [
     password: "7936",
     role: "unit",
     unitName: "Espaçolaser | Plaza Macaé",
-    spreadsheetId: "16smqQ6TWa2Jqv0xYnKUFAsgE1jlksFH3OV-DCbJefJE"
+    spreadsheetId: SPREADSHEET_MAP["Espaçolaser | Plaza Macaé"]
   },
   {
     username: "Macaé",
@@ -121,7 +135,7 @@ export const USERS: UserConfig[] = [
     password: "2514",
     role: "unit",
     unitName: "Espaçolaser | Centro Macaé",
-    spreadsheetId: "1IAKAmP3HQk89Nzh3C-86IyIrlldEcOtegG4ZlLirWzM"
+    spreadsheetId: SPREADSHEET_MAP["Espaçolaser | Centro Macaé"]
   },
   {
     username: "Quixadá",
@@ -129,7 +143,7 @@ export const USERS: UserConfig[] = [
     password: "5836",
     role: "unit",
     unitName: "Espaçolaser | Quixadá",
-    spreadsheetId: "1DHuCarVu-zAvNOa5ooaRDVFVswyphjplhU_0ipgpRgk"
+    spreadsheetId: SPREADSHEET_MAP["Espaçolaser | Quixadá"]
   }
 ];
 
@@ -279,7 +293,7 @@ export function formatVerbatimDate(dateStr: string): { formatted: string; timest
 
 export function normalizeStatus(val: string) {
   const clean = (val || '').trim();
-  return { label: clean || '---', color: clean === 'CREATED' ? 'green' : 'yellow' };
+  return { label: clean || '---', color: (clean === 'CREATED' ? 'green' : 'yellow') as 'green' | 'yellow' };
 }
 
 export function normalizeValue(text: string): string {
@@ -299,20 +313,20 @@ export function normalizeCliente(val: string) {
   const normalized = normalizeValue(val);
 
   if (normalized.includes('ainda nao sou cliente') || normalized.includes('nao sou cliente')) {
-    return { label: 'Novo Cliente', color: 'green' };
+    return { label: 'Novo Cliente', color: 'green' as const };
   }
   if (normalized.includes('ja sou cliente') || normalized.includes('sou cliente')) {
-    return { label: 'Já é Cliente', color: 'yellow' };
+    return { label: 'Já é Cliente', color: 'yellow' as const };
   }
 
   if (!val) {
-    return { label: 'Não informado', color: 'gray' };
+    return { label: 'Não informado', color: 'gray' as const };
   }
   const displayLabel = val
     .replace(/_/g, ' ')
     .replace(/[.!?:;]+/g, '')
     .trim();
-  return { label: displayLabel || 'Não informado', color: 'gray' };
+  return { label: displayLabel || 'Não informado', color: 'gray' as const };
 }
 
 export function normalizeInteresse(val: string): string {
@@ -333,42 +347,4 @@ export function processWhatsApp(val: string): { digits: string; link: string } {
   const digits = (val || '').replace(/\D/g, '');
   const link = digits ? `https://wa.me/${digits}` : '';
   return { digits, link };
-}
-
-export const SESSION_SECRET = process.env.SESSION_SECRET || 'espacolaser_super_secret_dynamic_key_2026_rf83n_fallback_74932';
-
-if (!process.env.SESSION_SECRET && process.env.NODE_ENV === 'production') {
-  console.warn('[AVISO] SESSION_SECRET não foi configurada no ambiente. Usando segredo fallback interno.');
-}
-
-export function generateSignedToken(payload: { username: string; role: string }) {
-  const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url');
-  const body = Buffer.from(JSON.stringify({ ...payload, iat: Date.now() })).toString('base64url');
-  
-  const hmac = crypto.createHmac('sha256', SESSION_SECRET);
-  hmac.update(`${header}.${body}`);
-  const signature = hmac.digest('base64url');
-  
-  return `${header}.${body}.${signature}`;
-}
-
-export function verifySignedToken(token: string): { username: string; role: string } | null {
-  try {
-    const parts = token.split('.');
-    if (parts.length !== 3) return null;
-    const [header, body, signature] = parts;
-    
-    const hmac = crypto.createHmac('sha256', SESSION_SECRET);
-    hmac.update(`${header}.${body}`);
-    const expectedSignature = hmac.digest('base64url');
-    
-    if (signature !== expectedSignature) {
-      return null;
-    }
-    
-    const payloadStr = Buffer.from(body, 'base64url').toString('utf-8');
-    return JSON.parse(payloadStr);
-  } catch {
-    return null;
-  }
 }

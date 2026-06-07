@@ -1,19 +1,19 @@
 # Monitor de Leads Espaçolaser
 
-App interno para monitoramento de leads vindos de formulários instantâneos do Meta Ads, com leitura em tempo real via Google Sheets e controle de acesso seguro por unidade.
+App interno para monitoramento de leads captados via formulários instantâneos do Meta Ads, com login por unidade, acesso ADM e leitura de dados em tempo real via Google Sheets diretamente no navegador.
 
 ## 🚀 Funcionalidades
 
-- **Controle de Acesso Multitenant**: Login seguro segregado por Unidade ou perfil Administrador.
-- **Visualização Filtrada**: Unidades visualizam estritamente seus próprios leads. Perfil ADM (Trafegon) acessa um consolidado interativo de todas as filiais.
-- **Sincronização Segura**: Conexão backend com Google Sheets usando chaveamento dinâmico de planilhas por unidade direto no servidor, mantendo credenciais, spreadsheetIds e lógica de acesso 100% blindados contra qualquer inspeção no client-side.
-- **Ações Rápidas de WhatsApp**: Botões de ação direta "Abrir WhatsApp" em nova aba (`https://wa.me/...`) e funcionalidade de cópia inteligente de apenas números com feedback imediato de "Copiado".
-- **Interface Premium**: Design minimalista e altamente responsivo (adaptado para tablets e PCs), com toggles instantâneos para modo Dia/Noite, cards estatísticos simplificados (Total de Leads, Novos Clientes, Já é Cliente) e filtros dinâmicos de período, cliente e interesse.
+- **Controle de Acesso por Unidade**: Login simples validado localmente no próprio front-end.
+- **Sessão Local**: Mantém a sessão do usuário ativa em `sessionStorage` mesmo após recarregar a página.
+- **Visualização Filtrada**: Gerentes de unidade acessam estritamente os leads de sua própria filial. O perfil ADM (**Trafegon**) visualiza as abas interativas de todos os canais sincronizados.
+- **Leitura Direta via Google Sheets**: O app realiza consultas assíncronas aos CSVs públicos das planilhas Google diretamente no navegador, eliminando o intermédio de servidores de validação.
+- **Ações Rápidas de WhatsApp**: Links dinâmicos (`https://wa.me/...`) que abrem conversas em nova aba e botão de cópia rápida rápida com feedback imediato de "Copiado".
+- **Interface Premium**: Design fluido e limpo com suporte nativo a modo Dia/Noite, atualização automática opcional a cada 10 minutos (com ponteiro e contador visível) e filtros multicritério de período, tipo de cliente e tipo de interesse.
 
 ## 🛠️ Tecnologias Utilizadas
 
 - **Frontend**: React 19, TypeScript, Tailwind CSS, Lucide React, Motion.
-- **Backend / Api**: Express, Node.js, TS-Execution (`tsx`), compilação robusta de servidor utilizando `esbuild` para CommonJS (`.cjs`).
 - **Build System**: Vite.
 
 ## ⚙️ Configuração Local
@@ -29,42 +29,31 @@ App interno para monitoramento de leads vindos de formulários instantâneos do 
 npm install
 ```
 
-### 2. Configurar Variáveis de Ambiente
-
-Crie um arquivo `.env` na raiz do projeto baseado no `.env.example` fornecido:
-
-```env
-PORT=3000
-SESSION_SECRET=sua_chave_secreta_de_sessao
-APP_ENV=production
-```
-
-### 3. Rodar em Modo de Desenvolvimento
+### 2. Rodar em Modo de Desenvolvimento
 
 ```bash
 npm run dev
 ```
 
-### 4. Gerar Build de Produção
+Abra [http://localhost:3000](http://localhost:3000) no seu navegador.
+
+### 3. Gerar Build de Produção (SPA Estático)
 
 ```bash
 npm run build
 ```
 
-O comando de compilação empacota o front-end via Vite e unifica o servidor Express em um único arquivo performático de CommonJS localizado em `dist/server.cjs`.
-
-### 5. Iniciar em Produção
-
-```bash
-npm run start
-```
+Isso gera uma pasta `dist/` contendo arquivos estáticos HTML, JS e CSS prontos para serem hospedados.
 
 ---
 
-## 🔒 Segurança e Boas Práticas (Vercel, Heroku, VPS)
+## 🔒 Deploy e Produção (Vercel, Netlify, GitHub Pages)
 
-Este projeto foi desenvolvido com as melhores diretrizes de segurança aplicadas do início ao fim:
+Como este app foi simplificado para rodar 100% no front-end, ele não depende de variáveis de ambiente no deploy e pode ser publicado na Vercel de forma estática e direta:
 
-- **Strict API First**: Os dados sensíveis das planilhas Google e as senhas de login residem unicamente nos mapas internos do backend Express. O client-side em nenhum momento interage diretamente com as fontes de dados brutas ou chaves privadas.
-- **Signed Tokens**: Sessões de autenticação usam chaves criptograficamente assinadas (`HMAC-SHA256`) baseadas na variável `SESSION_SECRET`.
-- **Aviso de Deploy**: "Este app deve usar o backend integrado para proteger credenciais e IDs das planilhas. Não exponha senhas ou IDs sensíveis no código do client-side."
+1. Suba o código para um repositório no **GitHub**.
+2. No painel da **Vercel**, conecte o repositório.
+3. Clique em **Deploy** (a Vercel detectará que se trata de um projeto Vite e rodará o build estático automaticamente).
+4. O app estará no ar pronto para uso!
+
+**Aviso**: Este app usa leitura direta de tabelas do Google Sheets e validação local no front-end. Não inclua senhas ou credenciais altamente confidenciais diretamente em arquivos públicos.

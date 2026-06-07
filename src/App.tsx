@@ -1,5 +1,18 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { INITIAL_UNITS, Unit, Lead, LoadingStatus, Session } from './types';
+import { 
+  buildCsvUrl, 
+  parseCSV, 
+  normalizeHeader, 
+  isTestLead, 
+  isPhone, 
+  formatVerbatimDate, 
+  normalizeCliente, 
+  normalizeInteresse, 
+  normalizeStatus, 
+  processWhatsApp,
+  SPREADSHEET_MAP
+} from './sharedStatic';
 
 // Component Imports
 import Header from './components/Header';
@@ -81,113 +94,213 @@ export default function App() {
 
   // Logout handler
   const handleLogout = useCallback(() => {
-    const saved = sessionStorage.getItem('espaçolaser_session');
-    if (saved) {
-      try {
-        const session = JSON.parse(saved);
-        fetch('/api/logout', {
-          method: 'POST',
-          headers: {
-            'Authorization': session.token,
-          }
-        }).catch(() => {});
-      } catch {}
-    }
     sessionStorage.removeItem('espaçolaser_session');
     setCurrentUser(null);
     setLeads([]);
-    setLoadingStatuses(INITIAL_UNITS.map(u => ({ unitName: u.name, status: 'idle' })));
+    setLoadingStatuses(INITIAL_UNITS.map(u => ({
+      unitName: u.name,
+      status: u.name === 'Espaçolaser | Vilhena' ? 'pending' : 'idle',
+      errorMessage: u.name === 'Espaçolaser | Vilhena' ? 'Planilha da unidade ainda não configurada.' : undefined,
+    })));
     setLastUpdated(null);
     setActiveTab('Todas');
     setAutoRefreshTimeRemaining(600);
   }, []);
 
-  // Core lead orchestrator backend fetch definition
-  const handleSyncData = useCallback(async (token: string) => {
-    if (isSyncing) return;
+  // Core lead orchestrator client-side sheet fetch definition
+  const handleSyncData = useCallback(async (userSession: Session | null) => {
+    if (!userSession || isSyncing) return;
     setIsSyncing(true);
 
-    try {
-      const response = await fetch('/api/leads', {
-        headers: {
-          'Authorization': token,
-        },
-      });
+    const isUserAdmin = userSession.role === 'admin';
+    const unitsToFetch = isUserAdmin 
+      ? INITIAL_UNITS 
+      : INITIAL_UNITS.filter(u => u.name === userSession.unitName);
 
-      if (response.status === 401) {
-        handleLogout();
+    const allFetchedLeads: Lead[] = [];
+    const statuses: LoadingStatus[] = [];
+    const seenUniqueKeys = new Set<string>();
+
+    const fetchPromises = unitsToFetch.map(async (unit) => {
+      const spreadsheetId = SPREADSHEET_MAP[unit.name];
+
+      if (!spreadsheetId) {
+        statuses.push({
+          unitName: unit.name,
+          status: 'pending',
+          errorMessage: 'Planilha da unidade ainda não configurada.',
+        });
         return;
       }
 
-      if (!response.ok) {
-        throw new Error(`HTTP Error status ${response.status}`);
-      }
-
-      const data = await response.json();
-      setLeads(data.leads || []);
-
-      // Parse and map load statuses from backend
-      const backendStatuses = data.statuses || [];
-      const updatedStatuses = INITIAL_UNITS.map(initUnit => {
-        const found = backendStatuses.find((s: any) => s.unitName === initUnit.name);
-        if (found) {
-          return {
-            unitName: initUnit.name,
-            status: found.status,
-            errorMessage: found.errorMessage,
-          };
-        }
-        return {
-          unitName: initUnit.name,
-          status: 'idle' as const,
-        };
+      statuses.push({
+        unitName: unit.name,
+        status: 'loading',
       });
-      setLoadingStatuses(updatedStatuses);
 
-      setLastUpdated(new Date());
-      setAutoRefreshTimeRemaining(600); // reset clock on successful sync
-    } catch (err: any) {
-      console.error('[Monitor de Leads] Erro no sync geral:', err);
-    } finally {
-      setIsSyncing(false);
-    }
-  }, [isSyncing, handleLogout]);
+      try {
+        const url = buildCsvUrl(spreadsheetId);
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error(`HTTP status ${response.status}`);
+        }
 
-  // Trigger mount level /api/me check and initial load
+        const text = await response.text();
+        const rows = parseCSV(text);
+
+        if (rows.length < 2) {
+          const existIdx = statuses.findIndex(s => s.unitName === unit.name);
+          const successObj: LoadingStatus = { unitName: unit.name, status: 'success' };
+          if (existIdx !== -1) statuses[existIdx] = successObj;
+          else statuses.push(successObj);
+          return;
+        }
+
+        const headers = (rows[0] || []).map(h => normalizeHeader(h));
+
+        let indexCreated = headers.findIndex(h => h.includes('created_time') || h === 'created_time');
+        if (indexCreated === -1) indexCreated = 1;
+
+        let indexCliente = headers.findIndex(h => h.includes('voce_ja_e_cliente_espacolaser'));
+        if (indexCliente === -1) indexCliente = 12;
+
+        let indexInteresse = headers.findIndex(h => h.includes('como_posso_te_ajudar_hoje'));
+        if (indexInteresse === -1) indexInteresse = 13;
+
+        let indexNome = headers.findIndex(h => {
+          const val = h.toLowerCase().trim();
+          return val === 'nome_completo' ||
+                 val === 'nome' ||
+                 val === 'full_name' ||
+                 val === 'fullname' ||
+                 val === 'customer_name' ||
+                 val === 'lead_name';
+        });
+        if (indexNome === -1) {
+          indexNome = headers.findIndex(h => {
+            const val = h.toLowerCase().trim();
+            return val.includes('nome_completo') ||
+                   val.includes('nome') ||
+                   val.includes('full_name') ||
+                   val.includes('fullname') ||
+                   val.includes('customer_name') ||
+                   val.includes('lead_name');
+          });
+        }
+        if (indexNome === -1) indexNome = 14;
+
+        let indexWhatsApp = headers.findIndex(h => h.includes('numero_do_whatsapp') || h === 'whatsapp' || h === 'telefone' || h === 'phone');
+        if (indexWhatsApp === -1) indexWhatsApp = 15;
+
+        let indexStatus = headers.findIndex(h => h === 'lead_status' || h === 'status');
+        if (indexStatus === -1) indexStatus = 16;
+
+        for (let r = 1; r < rows.length; r++) {
+          const row = rows[r];
+          if (!row || row.length === 0) continue;
+
+          if (isTestLead(row)) continue;
+
+          let createdRaw = (row[indexCreated] !== undefined) ? row[indexCreated].trim() : '';
+          let clienteRaw = (row[indexCliente] !== undefined) ? row[indexCliente].trim() : '';
+          let interesseRaw = (row[indexInteresse] !== undefined) ? row[indexInteresse].trim() : '';
+          let nomeRaw = (row[indexNome] !== undefined) ? row[indexNome].trim() : '';
+          let whatsappRaw = (row[indexWhatsApp] !== undefined) ? row[indexWhatsApp].trim() : '';
+          let statusRaw = (row[indexStatus] !== undefined) ? row[indexStatus].trim() : '';
+
+          if (isPhone(statusRaw)) {
+            const digitsWhatsApp = whatsappRaw.replace(/\D/g, '');
+            if (digitsWhatsApp.length < 8) {
+              whatsappRaw = statusRaw;
+            }
+            statusRaw = '';
+          }
+
+          if (!nomeRaw && !whatsappRaw && !createdRaw) continue;
+
+          const { digits: whatsappDigits, link: whatsappLink } = processWhatsApp(whatsappRaw);
+          const leadUniqueKey = unit.name + createdRaw + whatsappDigits + nomeRaw;
+          
+          if (seenUniqueKeys.has(leadUniqueKey)) continue;
+          seenUniqueKeys.add(leadUniqueKey);
+
+          const { formatted: createdTimeFormatted, timestamp: createdAtForSorting } = formatVerbatimDate(createdRaw);
+          const { label: clienteLabel, color: clienteColor } = normalizeCliente(clienteRaw);
+          const interesseLabel = normalizeInteresse(interesseRaw);
+          const { label: statusLabel, color: statusColor } = normalizeStatus(statusRaw);
+
+          allFetchedLeads.push({
+            id: leadUniqueKey,
+            unitName: unit.name,
+            createdTimeRaw: createdRaw,
+            createdTimeFormatted,
+            clienteRaw,
+            clienteLabel,
+            clienteColor,
+            interesseRaw,
+            interesseLabel,
+            nome: nomeRaw || 'Nome não informado',
+            whatsappRaw: whatsappRaw || 'Sem contato',
+            whatsappDigits,
+            whatsappLink,
+            statusRaw: statusRaw || '',
+            statusLabel: statusRaw ? statusLabel : 'Sem status',
+            statusColor,
+            createdAtForSorting,
+          });
+        }
+
+        const existIdx = statuses.findIndex(s => s.unitName === unit.name);
+        if (existIdx !== -1) {
+          statuses[existIdx] = { unitName: unit.name, status: 'success' };
+        } else {
+          statuses.push({ unitName: unit.name, status: 'success' });
+        }
+
+      } catch (err: any) {
+        console.error(`[App CSV Sync] Erro em ${unit.name}:`, err);
+        const existIdx = statuses.findIndex(s => s.unitName === unit.name);
+        const errorItemObj: LoadingStatus = {
+          unitName: unit.name,
+          status: 'error',
+          errorMessage: `Não foi possível carregar os leads de ${unit.name.replace('Espaçolaser | ', '')}.`,
+        };
+        if (existIdx !== -1) {
+          statuses[existIdx] = errorItemObj;
+        } else {
+          statuses.push(errorItemObj);
+        }
+      }
+    });
+
+    await Promise.all(fetchPromises);
+
+    const finalStatuses: LoadingStatus[] = INITIAL_UNITS.map(initUnit => {
+      const found = statuses.find(s => s.unitName === initUnit.name);
+      if (found) return found;
+      
+      return {
+        unitName: initUnit.name,
+        status: (initUnit.name === 'Espaçolaser | Vilhena') ? 'pending' : 'idle',
+        errorMessage: (initUnit.name === 'Espaçolaser | Vilhena') ? 'Planilha da unidade ainda não configurada.' : undefined,
+      };
+    });
+
+    setLeads(allFetchedLeads);
+    setLoadingStatuses(finalStatuses);
+    setLastUpdated(new Date());
+    setAutoRefreshTimeRemaining(600);
+    setIsSyncing(false);
+  }, [isSyncing]);
+
+  // Trigger check on load
   useEffect(() => {
     const saved = sessionStorage.getItem('espaçolaser_session');
     if (saved) {
       try {
         const session: Session = JSON.parse(saved);
-        // Background validate against /api/me
-        fetch('/api/me', {
-          headers: {
-            'Authorization': session.token
-          }
-        })
-        .then(res => {
-          if (res.status === 401) {
-            handleLogout();
-          } else if (res.ok) {
-            return res.json();
-          }
-        })
-        .then(data => {
-          if (data && data.success) {
-            setCurrentUser({
-              ...session,
-              role: data.user.role,
-              unitName: data.user.unitName
-            });
-            handleSyncData(session.token);
-          } else {
-            handleLogout();
-          }
-        })
-        .catch(() => {
-          // If network failed but we have a session, attempt sync with token anyway
-          handleSyncData(session.token);
-        });
+        setCurrentUser(session);
+        handleSyncData(session);
       } catch {
         handleLogout();
       }
@@ -201,7 +314,7 @@ export default function App() {
     const timer = setInterval(() => {
       setAutoRefreshTimeRemaining((prev) => {
         if (prev <= 1) {
-          handleSyncData(currentUser.token);
+          handleSyncData(currentUser);
           return 600;
         }
         return prev - 1;
@@ -215,7 +328,7 @@ export default function App() {
   const handleLoginSuccess = (session: Session) => {
     sessionStorage.setItem('espaçolaser_session', JSON.stringify(session));
     setCurrentUser(session);
-    handleSyncData(session.token);
+    handleSyncData(session);
   };
 
   // Toggle specific store checkbox (Admin only)
@@ -244,7 +357,7 @@ export default function App() {
   // Manual update custom trigger
   const handleManualRefresh = () => {
     if (currentUser) {
-      handleSyncData(currentUser.token);
+      handleSyncData(currentUser);
     }
   };
 
