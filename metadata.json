@@ -1,0 +1,6 @@
+{
+  "name": "Monitor de Leads Espaçolaser",
+  "description": "Dashboard operacional para monitoramento de leads integrados via formulários instantâneos do Meta Ads integrados ao Google Sheets.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
