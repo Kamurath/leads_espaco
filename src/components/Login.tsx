@@ -54,7 +54,7 @@ export default function Login({ onLoginSuccess, isDarkMode, onToggleDarkMode }: 
       });
 
     } catch (err) {
-      setError('Falha de conexão com o servidor de validação.');
+      setError('Não foi possível conectar ao servidor. Verifique o deploy da API.');
       setIsLoading(false);
     }
   };
