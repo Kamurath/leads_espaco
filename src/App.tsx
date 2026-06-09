@@ -99,8 +99,7 @@ export default function App() {
     setLeads([]);
     setLoadingStatuses(INITIAL_UNITS.map(u => ({
       unitName: u.name,
-      status: u.name === 'Espaçolaser | Vilhena' ? 'pending' : 'idle',
-      errorMessage: u.name === 'Espaçolaser | Vilhena' ? 'Planilha da unidade ainda não configurada.' : undefined,
+      status: 'idle',
     })));
     setLastUpdated(null);
     setActiveTab('Todas');
@@ -277,12 +276,9 @@ export default function App() {
 
     const finalStatuses: LoadingStatus[] = INITIAL_UNITS.map(initUnit => {
       const found = statuses.find(s => s.unitName === initUnit.name);
-      if (found) return found;
-      
-      return {
+      return found || {
         unitName: initUnit.name,
-        status: (initUnit.name === 'Espaçolaser | Vilhena') ? 'pending' : 'idle',
-        errorMessage: (initUnit.name === 'Espaçolaser | Vilhena') ? 'Planilha da unidade ainda não configurada.' : undefined,
+        status: 'idle',
       };
     });
 

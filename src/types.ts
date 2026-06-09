@@ -75,8 +75,8 @@ export const INITIAL_UNITS: Unit[] = [
   },
   {
     name: "Espaçolaser | Vilhena",
-    enabled: false,
-    pending: true,
+    enabled: true,
+    pending: false,
   },
   {
     name: "Espaçolaser | Corumbá",

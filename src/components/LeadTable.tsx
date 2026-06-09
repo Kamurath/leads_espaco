@@ -31,6 +31,107 @@ export default function LeadTable({
   
   const [copiedLeadId, setCopiedLeadId] = useState<string | null>(null);
 
+  // KVdb Zero-Cost Persistent Cloud Database Configuration
+  const KVDB_BUCKET = "X8iSbPb56NiRsSEv7TzHQX";
+  const KVDB_SECRET = "super_secret_for_trafegon_leads_system_2026";
+  const KVDB_KEY = "initiated_leads";
+  // GET is open public, PUT requires basic authentication
+  const KVDB_AUTH = "Basic " + btoa(":" + KVDB_SECRET);
+
+  // Persistent storage for "Atendimento Iniciado"
+  const [initiatedLeads, setInitiatedLeads] = useState<Record<string, boolean>>(() => {
+    try {
+      const stored = localStorage.getItem('trafegon_leads_initiated');
+      return stored ? JSON.parse(stored) : {};
+    } catch (e) {
+      return {};
+    }
+  });
+
+  const [isSyncingCloud, setIsSyncingCloud] = useState(false);
+  const [cloudSyncError, setCloudSyncError] = useState<string | null>(null);
+
+  // Load from Cloud database on mount to merge states across devices and sessions
+  React.useEffect(() => {
+    const fetchCloudInitiated = async () => {
+      setIsSyncingCloud(true);
+      try {
+        const res = await fetch(`https://kvdb.io/${KVDB_BUCKET}/${KVDB_KEY}`);
+        if (res.status === 200) {
+          const cloudData = await res.json();
+          if (cloudData && typeof cloudData === 'object') {
+            setInitiatedLeads(prev => {
+              const merged = { ...prev, ...cloudData };
+              try {
+                localStorage.setItem('trafegon_leads_initiated', JSON.stringify(merged));
+              } catch (_) {}
+              return merged;
+            });
+          }
+          setCloudSyncError(null);
+        } else if (res.status === 404) {
+          // No cloud data yet, perfectly fine!
+          setCloudSyncError(null);
+        } else {
+          const text = await res.text();
+          if (text.includes("email address not verified")) {
+            setCloudSyncError("needs_verification");
+          } else {
+            setCloudSyncError("failed");
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch cloud leads:", err);
+        setCloudSyncError("failed");
+      } finally {
+        setIsSyncingCloud(false);
+      }
+    };
+
+    fetchCloudInitiated();
+  }, []);
+
+  const handleToggleInitiated = async (leadId: string) => {
+    let nextState: Record<string, boolean> = {};
+    
+    // 1. Immediately update UI & LocalStorage for instant native feedback
+    setInitiatedLeads(prev => {
+      const updated = { ...prev, [leadId]: !prev[leadId] };
+      try {
+        localStorage.setItem('trafegon_leads_initiated', JSON.stringify(updated));
+      } catch (err) {
+        console.error('Error saving initiated status', err);
+      }
+      nextState = updated;
+      return updated;
+    });
+
+    // 2. Transmit changes to cloud database
+    try {
+      const res = await fetch(`https://kvdb.io/${KVDB_BUCKET}/${KVDB_KEY}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": KVDB_AUTH
+        },
+        body: JSON.stringify(nextState)
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        if (text.includes("email address not verified")) {
+          setCloudSyncError("needs_verification");
+        } else {
+          setCloudSyncError("failed");
+        }
+      } else {
+        setCloudSyncError(null);
+      }
+    } catch (err) {
+      console.error("Failed to sync status to cloud:", err);
+      setCloudSyncError("failed");
+    }
+  };
+
   // Pagination parameters
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 15;
@@ -205,12 +306,42 @@ export default function LeadTable({
       {/* Search inputs, Time Filters selectors and stats */}
       <div className="rounded-xl border border-slate-200 bg-white p-4.5 shadow-sm dark:border-slate-800 dark:bg-slate-800 space-y-4">
         
-        {/* Top-row: Title & Counter widget */}
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-            Painel Operacional de Monitoração
-          </p>
-          <div className="inline-flex items-center gap-1.5 rounded-full bg-cyan-50/60 dark:bg-slate-900 px-3 py-1 text-xs font-bold text-[#0B2F3D] dark:text-[#00B6C6]">
+        {/* Top-row: Title & Counter widget with Cloud Sync notification */}
+        <div className="flex flex-col gap-3.5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-1">
+            <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+              Painel Operacional de Monitoração
+            </p>
+            
+            {/* Live Cloud Synchronizer Indicator bar */}
+            <div className="mt-0.5">
+              {isSyncingCloud ? (
+                <div className="flex items-center gap-1.5 text-[10px] text-cyan-600 dark:text-cyan-400 font-bold select-none uppercase tracking-wider">
+                  <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse shrink-0" />
+                  Sincronizando marcações com a nuvem...
+                </div>
+              ) : cloudSyncError === 'needs_verification' ? (
+                <div className="flex items-center gap-1.5 text-[10px] text-amber-500 dark:text-amber-400 font-bold select-none uppercase tracking-wider">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping shrink-0" />
+                  Sincronização pendente: verifique o e-mail fritztrafegon@gmail.com para ativar o sync permanente de graça!
+                  <a href="https://kvdb.io/login" target="_blank" rel="noreferrer" className="underline hover:text-amber-400 font-extrabold normal-case ml-1">
+                    Ativar no kvdb.io
+                  </a>
+                </div>
+              ) : cloudSyncError === 'failed' ? (
+                <div className="flex items-center gap-1.5 text-[10px] text-rose-500 dark:text-rose-400 font-bold select-none uppercase tracking-wider">
+                  <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" />
+                  Banco temporariamente offline. Salvando offline localmente no dispositivo.
+                </div>
+              ) : (
+                <div className="flex items-center gap-1.5 text-[10px] text-emerald-600 dark:text-[#25D366] font-bold select-none uppercase tracking-wider">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-[#25D366] shrink-0" />
+                  Sincronismo em Nuvem gratuito Ativo
+                </div>
+              )}
+            </div>
+          </div>
+          <div className="inline-flex items-center gap-1.5 rounded-full bg-cyan-50/60 dark:bg-slate-900 px-3 py-1 text-xs font-bold text-[#0B2F3D] dark:text-[#00B6C6] self-start sm:self-center">
             <span>Exibindo {filteredLeads.length} de {leads.length} leads</span>
           </div>
         </div>
@@ -349,6 +480,7 @@ export default function LeadTable({
                   {paginatedLeads.map((lead) => {
                     
                     const isRecent = isLeadRecent(lead.createdAtForSorting);
+                    const isInitiated = !!initiatedLeads[lead.id];
                     
                     const clientColorClass =
                       lead.clienteColor === 'green'
@@ -373,13 +505,22 @@ export default function LeadTable({
 
                         {/* 2. Data e Hora */}
                         <td className="px-5 py-4 whitespace-nowrap">
-                          <div className="flex flex-col gap-0.5">
+                          <div className="flex flex-col gap-1">
                             <span className="font-mono text-[11px] text-slate-500 dark:text-slate-400 font-semibold">
                               {lead.createdTimeFormatted}
                             </span>
                             {isRecent && (
                               <span className="inline-flex items-center gap-0.5 text-[9px] font-bold text-[#00B6C6] uppercase tracking-wider">
                                 <Clock className="h-2 w-2" /> Lead recente
+                              </span>
+                            )}
+                            {!isInitiated ? (
+                              <span className="inline-flex w-max items-center justify-center text-[10px] font-bold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/25 px-1.5 py-0.5 rounded-md leading-none">
+                                Novo Lead
+                              </span>
+                            ) : (
+                              <span className="inline-flex w-max items-center justify-center text-[10px] font-bold text-emerald-650 dark:text-[#25D366] bg-emerald-50 dark:bg-emerald-950/25 px-1.5 py-0.5 rounded-md leading-none">
+                                Iniciado
                               </span>
                             )}
                           </div>
@@ -436,6 +577,31 @@ export default function LeadTable({
                                     </>
                                   )}
                                 </button>
+
+                                <label 
+                                  onClick={(e) => e.stopPropagation()} 
+                                  className="inline-flex items-center gap-1.5 cursor-pointer select-none py-1 px-2 rounded hover:bg-slate-100 dark:hover:bg-slate-800/40 transition-colors"
+                                  title="Sinalizar Atendimento Iniciado"
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={isInitiated}
+                                    onChange={() => handleToggleInitiated(lead.id)}
+                                    className="sr-only"
+                                  />
+                                  <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all shrink-0 ${
+                                    isInitiated 
+                                      ? 'bg-emerald-500 border-emerald-500 text-white shadow-xs' 
+                                      : 'border-slate-300 bg-white dark:border-slate-600 dark:bg-slate-900 text-transparent'
+                                  }`}>
+                                    <Check className={`h-2.5 w-2.5 stroke-[4px] transition-transform ${isInitiated ? 'scale-100' : 'scale-0'}`} />
+                                  </div>
+                                  <span className={`text-[11px] font-bold leading-none ${
+                                    isInitiated ? 'text-emerald-600 dark:text-emerald-450' : 'text-slate-500 dark:text-slate-400'
+                                  }`}>
+                                    Atendimento Iniciado
+                                  </span>
+                                </label>
                               </>
                             ) : (
                               <span className="text-slate-400 italic font-bold">Sem contato</span>
@@ -454,6 +620,7 @@ export default function LeadTable({
             <div className="block lg:hidden divide-y divide-slate-150 dark:divide-slate-850">
               {paginatedLeads.map((lead) => {
                 const isRecent = isLeadRecent(lead.createdAtForSorting);
+                const isInitiated = !!initiatedLeads[lead.id];
                 
                 return (
                   <div
@@ -474,6 +641,15 @@ export default function LeadTable({
                           {isRecent && (
                             <span className="inline-flex rounded-full bg-cyan-500/10 dark:bg-cyan-950/45 px-2 py-0.5 text-[9px] font-bold text-[#00B6C6] uppercase tracking-wider">
                               Lead recente
+                            </span>
+                          )}
+                          {!isInitiated ? (
+                            <span className="inline-flex rounded bg-rose-500/10 dark:bg-rose-950/45 px-1.5 py-0.5 text-[9px] font-bold text-rose-500 uppercase tracking-wider">
+                              Novo Lead
+                            </span>
+                          ) : (
+                            <span className="inline-flex rounded bg-emerald-500/10 dark:bg-emerald-950/45 px-1.5 py-0.5 text-[9px] font-bold text-emerald-555 dark:text-emerald-400 uppercase tracking-wider">
+                              Iniciado
                             </span>
                           )}
                         </div>
@@ -536,6 +712,31 @@ export default function LeadTable({
                                 </>
                               )}
                             </button>
+
+                            <label 
+                              onClick={(e) => e.stopPropagation()} 
+                              className="inline-flex items-center gap-1.5 cursor-pointer select-none py-1 px-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-800/40 transition-colors"
+                              title="Sinalizar Atendimento Iniciado"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={isInitiated}
+                                onChange={() => handleToggleInitiated(lead.id)}
+                                className="sr-only"
+                              />
+                              <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all shrink-0 ${
+                                isInitiated 
+                                  ? 'bg-emerald-500 border-emerald-500 text-white shadow-xs' 
+                                  : 'border-slate-300 bg-white dark:border-slate-600 dark:bg-slate-900 text-transparent'
+                                }`}>
+                                <Check className={`h-2.5 w-2.5 stroke-[4px] transition-transform ${isInitiated ? 'scale-100' : 'scale-0'}`} />
+                              </div>
+                              <span className={`text-[11px] font-bold leading-none ${
+                                isInitiated ? 'text-emerald-600 dark:text-emerald-450' : 'text-slate-500 dark:text-slate-400'
+                              }`}>
+                                Atendimento Iniciado
+                              </span>
+                            </label>
                           </>
                         ) : (
                           <span className="text-slate-400 text-[11px] italic font-bold">Sem contato</span>
