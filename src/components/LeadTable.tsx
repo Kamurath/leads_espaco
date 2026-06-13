@@ -515,7 +515,7 @@ export default function LeadTable({
                     {isAdmin && <th className="px-5 py-4 w-[110px]">Unidade</th>}
                     <th className="px-5 py-4 w-[120px]">Data e Hora</th>
                     <th className="px-5 py-4 w-[115px]">Cliente</th>
-                    <th className="px-5 py-4 w-[130px]">Interesse</th>
+                    {!isCopaSubTabActive && <th className="px-5 py-4 w-[130px]">Interesse</th>}
                     {isCopaSubTabActive && <th className="px-5 py-4 w-[180px]">Palpite Copa</th>}
                     <th className="px-5 py-4 min-w-[200px]">Nome</th>
                     <th className="px-5 py-4 w-[240px]">WhatsApp</th>
@@ -579,9 +579,11 @@ export default function LeadTable({
                         </td>
 
                         {/* 4. Interesse */}
-                        <td className="px-5 py-4 text-slate-600 dark:text-slate-350 font-semibold truncate max-w-[140px]" title={lead.interesseLabel}>
-                          {lead.interesseLabel}
-                        </td>
+                        {!isCopaSubTabActive && (
+                          <td className="px-5 py-4 text-slate-600 dark:text-slate-350 font-semibold truncate max-w-[140px]" title={lead.interesseLabel}>
+                            {lead.interesseLabel}
+                          </td>
+                        )}
 
                         {/* Palpite Copa (only when active) */}
                         {isCopaSubTabActive && (
@@ -726,10 +728,12 @@ export default function LeadTable({
                         <span className="text-slate-400">Cliente: </span>
                         <span className="font-semibold text-slate-700 dark:text-slate-350">{lead.clienteLabel}</span>
                       </div>
-                      <div>
-                        <span className="text-slate-400">Interesse: </span>
-                        <span className="font-semibold text-slate-700 dark:text-slate-350">{lead.interesseLabel}</span>
-                      </div>
+                      {!isCopaSubTabActive && (
+                        <div>
+                          <span className="text-slate-400">Interesse: </span>
+                          <span className="font-semibold text-slate-700 dark:text-slate-350">{lead.interesseLabel}</span>
+                        </div>
+                      )}
                       {isCopaSubTabActive && (
                         <div className="col-span-2 mt-1.5 flex flex-col gap-0.5">
                           <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wide">Palpite da Copa</span>
