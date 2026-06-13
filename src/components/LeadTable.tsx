@@ -9,6 +9,8 @@ interface LeadTableProps {
   activeTab: string;
   setActiveTab: (val: string) => void;
   loadingStatuses: LoadingStatus[];
+  quixadaSubTab: 'diarios' | 'copa';
+  onQuixadaSubTabChange: (val: 'diarios' | 'copa') => void;
 }
 
 export default function LeadTable({
@@ -18,6 +20,8 @@ export default function LeadTable({
   activeTab,
   setActiveTab,
   loadingStatuses,
+  quixadaSubTab,
+  onQuixadaSubTabChange,
 }: LeadTableProps) {
   // Search query state
   const [searchQuery, setSearchQuery] = useState('');
@@ -137,6 +141,8 @@ export default function LeadTable({
   const itemsPerPage = 15;
 
   const isAdmin = currentUser?.role === 'admin';
+  const isCopaSubTabActive = ((currentUser?.role === 'unit' && currentUser?.unitName === 'Espaçolaser | Quixadá') || 
+    (currentUser?.role === 'admin' && activeTab === 'Espaçolaser | Quixadá')) && quixadaSubTab === 'copa';
 
   const tabNames = [
     'Todas',
@@ -299,6 +305,44 @@ export default function LeadTable({
                 </button>
               );
             })}
+          </div>
+        </div>
+      )}
+
+      {/* Quixadá Sub-Tabs (only when viewing the Quixadá panel or logged in as Quixadá) */}
+      {((currentUser?.role === 'unit' && currentUser?.unitName === 'Espaçolaser | Quixadá') || 
+        (currentUser?.role === 'admin' && activeTab === 'Espaçolaser | Quixadá')) && (
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-800 flex flex-col gap-2.5">
+          <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+            Origem dos Leads de Quixadá
+          </p>
+          <div className="flex gap-2 max-w-sm select-none">
+            <button
+              onClick={() => {
+                onQuixadaSubTabChange('diarios');
+                setCurrentPage(1);
+              }}
+              className={`flex-1 flex items-center justify-center gap-2 rounded-lg py-2.5 text-xs font-bold transition-all cursor-pointer ${
+                quixadaSubTab === 'diarios'
+                  ? 'bg-[#0B2F3D] text-white dark:bg-[#00B6C6] dark:text-[#0B2F3D] shadow-md shadow-cyan-500/5'
+                  : 'bg-slate-100 hover:bg-slate-200 text-slate-600 dark:bg-slate-900 dark:hover:bg-slate-800 dark:text-slate-300'
+              }`}
+            >
+              <span>Leads Diários</span>
+            </button>
+            <button
+              onClick={() => {
+                onQuixadaSubTabChange('copa');
+                setCurrentPage(1);
+              }}
+              className={`flex-1 flex items-center justify-center gap-2 rounded-lg py-2.5 text-xs font-bold transition-all cursor-pointer ${
+                quixadaSubTab === 'copa'
+                  ? 'bg-[#0B2F3D] text-white dark:bg-[#00B6C6] dark:text-[#0B2F3D] shadow-md shadow-cyan-500/5'
+                  : 'bg-slate-100 hover:bg-slate-200 text-slate-600 dark:bg-slate-900 dark:hover:bg-slate-800 dark:text-slate-300'
+              }`}
+            >
+              🏆 <span>Leads da Copa</span>
+            </button>
           </div>
         </div>
       )}
@@ -472,6 +516,7 @@ export default function LeadTable({
                     <th className="px-5 py-4 w-[120px]">Data e Hora</th>
                     <th className="px-5 py-4 w-[115px]">Cliente</th>
                     <th className="px-5 py-4 w-[130px]">Interesse</th>
+                    {isCopaSubTabActive && <th className="px-5 py-4 w-[180px]">Palpite Copa</th>}
                     <th className="px-5 py-4 min-w-[200px]">Nome</th>
                     <th className="px-5 py-4 w-[240px]">WhatsApp</th>
                   </tr>
@@ -537,6 +582,22 @@ export default function LeadTable({
                         <td className="px-5 py-4 text-slate-600 dark:text-slate-350 font-semibold truncate max-w-[140px]" title={lead.interesseLabel}>
                           {lead.interesseLabel}
                         </td>
+
+                        {/* Palpite Copa (only when active) */}
+                        {isCopaSubTabActive && (
+                          <td className="px-5 py-4 whitespace-nowrap">
+                            <div className="flex flex-col gap-0.5">
+                              <span className="inline-flex items-center gap-1 w-max rounded-full bg-cyan-50 text-[#0b2f3d] border border-cyan-200 dark:bg-cyan-950/45 dark:text-cyan-300 dark:border-cyan-900/30 px-3 py-1.5 text-xs font-black shadow-xs">
+                                {lead.palpitePlacar || 'Não palpitou'}
+                              </span>
+                              {lead.rawPalpitePlacar && lead.rawPalpitePlacar !== lead.palpitePlacar && (
+                                <span className="text-[10px] text-slate-450 dark:text-slate-500 italic block font-semibold truncate max-w-[170px]" title={`Registrado: ${lead.rawPalpitePlacar}`}>
+                                  Origem: {lead.rawPalpitePlacar}
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                        )}
 
                         {/* 5. Nome */}
                         <td className="px-5 py-4 font-extrabold text-slate-900 dark:text-white text-sm break-words whitespace-normal leading-snug min-w-[200px]" title={lead.nome || "Nome não informado"}>
@@ -669,6 +730,19 @@ export default function LeadTable({
                         <span className="text-slate-400">Interesse: </span>
                         <span className="font-semibold text-slate-700 dark:text-slate-350">{lead.interesseLabel}</span>
                       </div>
+                      {isCopaSubTabActive && (
+                        <div className="col-span-2 mt-1.5 flex flex-col gap-0.5">
+                          <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wide">Palpite da Copa</span>
+                          <span className="inline-flex items-center gap-1 w-max rounded-md bg-cyan-50 text-[#0b2f3d] border border-cyan-150 dark:bg-cyan-950/45 dark:text-cyan-300 dark:border-cyan-900/30 px-2.5 py-1 text-xs font-black shadow-xs">
+                            {lead.palpitePlacar || 'Não palpitou'}
+                          </span>
+                          {lead.rawPalpitePlacar && lead.rawPalpitePlacar !== lead.palpitePlacar && (
+                            <span className="text-[9px] text-slate-400 dark:text-slate-500 italic block font-semibold" title={`Original: ${lead.rawPalpitePlacar}`}>
+                              Origem: {lead.rawPalpitePlacar}
+                            </span>
+                          )}
+                        </div>
+                      )}
                     </div>
 
                     {/* Interactive elements */}

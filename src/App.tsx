@@ -11,6 +11,7 @@ import {
   normalizeInteresse, 
   normalizeStatus, 
   processWhatsApp,
+  translateSoccerGuess,
   SPREADSHEET_MAP
 } from './sharedStatic';
 
@@ -66,6 +67,9 @@ export default function App() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   
+  // Sub-tab selection for Quixada unit Leads ('diarios' | 'copa')
+  const [quixadaSubTab, setQuixadaSubTab] = useState<'diarios' | 'copa'>('diarios');
+  
   // Ticking countdown until autosync (600 seconds = 10 minutes)
   const [autoRefreshTimeRemaining, setAutoRefreshTimeRemaining] = useState(600);
 
@@ -104,10 +108,11 @@ export default function App() {
     setLastUpdated(null);
     setActiveTab('Todas');
     setAutoRefreshTimeRemaining(600);
+    setQuixadaSubTab('diarios');
   }, []);
 
   // Core lead orchestrator client-side sheet fetch definition
-  const handleSyncData = useCallback(async (userSession: Session | null) => {
+  const handleSyncData = useCallback(async (userSession: Session | null, forceSubTab?: 'diarios' | 'copa') => {
     if (!userSession || isSyncing) return;
     setIsSyncing(true);
 
@@ -120,8 +125,15 @@ export default function App() {
     const statuses: LoadingStatus[] = [];
     const seenUniqueKeys = new Set<string>();
 
+    const activeSubTab = forceSubTab !== undefined ? forceSubTab : quixadaSubTab;
+
     const fetchPromises = unitsToFetch.map(async (unit) => {
-      const spreadsheetId = SPREADSHEET_MAP[unit.name];
+      let spreadsheetId = SPREADSHEET_MAP[unit.name];
+      if (unit.name === "Espaçolaser | Quixadá") {
+        spreadsheetId = activeSubTab === 'copa'
+          ? "1xzgGDSsdxyP6x6Hv_EQase_i06o81ykkRo1UVUwKm9g"
+          : "1DHuCarVu-zAvNOa5ooaRDVFVswyphjplhU_0ipgpRgk";
+      }
 
       if (!spreadsheetId) {
         statuses.push({
@@ -194,6 +206,15 @@ export default function App() {
         let indexStatus = headers.findIndex(h => h === 'lead_status' || h === 'status');
         if (indexStatus === -1) indexStatus = 16;
 
+        // 1. Identify soccer palpite guess column index
+        let indexPalpite = headers.findIndex(h => 
+          h.includes('palpite') || 
+          h.includes('placar') || 
+          h.includes('brasil_x_marrocos') || 
+          h.includes('jogo_de_hoje') ||
+          h.includes('marrocos')
+        );
+
         for (let r = 1; r < rows.length; r++) {
           const row = rows[r];
           if (!row || row.length === 0) continue;
@@ -206,6 +227,10 @@ export default function App() {
           let nomeRaw = (row[indexNome] !== undefined) ? row[indexNome].trim() : '';
           let whatsappRaw = (row[indexWhatsApp] !== undefined) ? row[indexWhatsApp].trim() : '';
           let statusRaw = (row[indexStatus] !== undefined) ? row[indexStatus].trim() : '';
+
+          // Extract original and standardized soccer predictions
+          let palpiteRaw = (indexPalpite !== -1 && row[indexPalpite] !== undefined) ? row[indexPalpite].trim() : '';
+          let palpitePlacar = palpiteRaw ? translateSoccerGuess(palpiteRaw) : '';
 
           if (isPhone(statusRaw)) {
             const digitsWhatsApp = whatsappRaw.replace(/\D/g, '');
@@ -246,6 +271,8 @@ export default function App() {
             statusLabel: statusRaw ? statusLabel : 'Sem status',
             statusColor,
             createdAtForSorting,
+            palpitePlacar,
+            rawPalpitePlacar: palpiteRaw,
           });
         }
 
@@ -290,7 +317,7 @@ export default function App() {
     setLastUpdated(new Date());
     setAutoRefreshTimeRemaining(600);
     setIsSyncing(false);
-  }, [isSyncing]);
+  }, [isSyncing, quixadaSubTab]);
 
   // Trigger check on load
   useEffect(() => {
@@ -359,6 +386,14 @@ export default function App() {
       handleSyncData(currentUser);
     }
   };
+
+  // Switch subtab on Quixada
+  const handleQuixadaSubTabChange = useCallback((newTab: 'diarios' | 'copa') => {
+    setQuixadaSubTab(newTab);
+    if (currentUser) {
+      handleSyncData(currentUser, newTab);
+    }
+  }, [currentUser, handleSyncData]);
 
   // Local display-level checkmarks filtering (only affects Admin display list speed)
   const visibleLeads = useMemo(() => {
@@ -472,6 +507,8 @@ export default function App() {
             activeTab={activeTab}
             setActiveTab={setActiveTab}
             loadingStatuses={loadingStatuses}
+            quixadaSubTab={quixadaSubTab}
+            onQuixadaSubTabChange={handleQuixadaSubTabChange}
           />
 
         </div>

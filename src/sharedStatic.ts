@@ -348,3 +348,68 @@ export function processWhatsApp(val: string): { digits: string; link: string } {
   const link = digits ? `https://wa.me/${digits}` : '';
   return { digits, link };
 }
+
+// Translate and normalize different sport guess formats into almost standardized visual formats.
+export function translateSoccerGuess(raw: string): string {
+  if (!raw) return '';
+  const cleaned = raw.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  if (!cleaned) return '';
+
+  // Match all numbers/digits in the sequence
+  const matchDigits = cleaned.match(/\d+/g);
+  
+  if (matchDigits && matchDigits.length >= 2) {
+    const num1 = parseInt(matchDigits[0]);
+    const num2 = parseInt(matchDigits[1]);
+
+    let scoreBrasil = num1;
+    let scoreMarrocos = num2;
+
+    // Distinguish if order is reverse or normal e.g., "marrocos_0_brasil_1" or "brasil_1_marrocos_0"
+    const posBrasil = cleaned.indexOf('brasil');
+    const posMarrocos = cleaned.indexOf('marrocos');
+
+    if (posBrasil !== -1 && posMarrocos !== -1) {
+      const firstNumIndex = cleaned.indexOf(matchDigits[0]);
+      const secondNumIndex = cleaned.indexOf(matchDigits[1]);
+      
+      const distB1 = Math.abs(firstNumIndex - posBrasil);
+      const distB2 = Math.abs(secondNumIndex - posBrasil);
+      const distM1 = Math.abs(firstNumIndex - posMarrocos);
+      const distM2 = Math.abs(secondNumIndex - posMarrocos);
+
+      // If first score is closer to Marrocos and second is closer to Brasil, swap
+      if (distB1 + distM2 > distB2 + distM1) {
+        scoreBrasil = num2;
+        scoreMarrocos = num1;
+      }
+    } else if (cleaned.endsWith('brasil') || cleaned.endsWith('br')) {
+      // e.g. "1 a 0 brasil" or "3 x 1 br"
+      scoreBrasil = num1;
+      scoreMarrocos = num2;
+    }
+
+    return `🇧🇷 Brasil ${scoreBrasil} x ${scoreMarrocos} Marrocos 🇲🇦`;
+  }
+
+  // Single score guess fallback
+  if (matchDigits && matchDigits.length === 1) {
+    const num = matchDigits[0];
+    if (cleaned.includes('brasil') || cleaned.includes('br')) {
+       return `🇧🇷 Palpite: Brasil ${num} gols`;
+    }
+    return `⚽ Placar: ${num}`;
+  }
+
+  // Treat textual cases like 'empate' or general remarks
+  if (cleaned.includes('empate') || cleaned === 'x') {
+    return '🤝 Empate';
+  }
+  if (cleaned.includes('ganha') || cleaned.includes('vence') || cleaned.includes('brasil')) {
+    return '🇧🇷 Vitória do Brasil';
+  }
+
+  // Capitalize nicely for other textual guesses
+  return raw.replace(/_/g, ' ').trim();
+}
+

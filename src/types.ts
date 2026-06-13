@@ -29,6 +29,8 @@ export interface Lead {
   statusLabel: string;
   statusColor: 'green' | 'yellow';
   createdAtForSorting: number; // millisecond timestamp
+  palpitePlacar?: string;
+  rawPalpitePlacar?: string;
 }
 
 export interface LoadingStatus {
