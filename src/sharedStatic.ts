@@ -355,7 +355,13 @@ export function translateSoccerGuess(raw: string, opponent: string = "Marrocos")
   const cleaned = raw.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
   if (!cleaned) return '';
 
-  const opponentEmoji = opponent.toLowerCase() === 'haiti' ? '🇭🇹' : '🇲🇦';
+  const cleanOpponent = opponent.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  let opponentEmoji = '🇲🇦';
+  if (cleanOpponent === 'haiti') {
+    opponentEmoji = '🇭🇹';
+  } else if (cleanOpponent === 'escocia') {
+    opponentEmoji = '🏴󠁧󠁢󠁳󠁣󠁴󠁿';
+  }
 
   // Match all numbers/digits in the sequence
   const matchDigits = cleaned.match(/\d+/g);
@@ -369,7 +375,7 @@ export function translateSoccerGuess(raw: string, opponent: string = "Marrocos")
 
     // Distinguish if order is reverse or normal e.g., "marrocos_0_brasil_1" or "brasil_1_marrocos_0"
     const posBrasil = cleaned.indexOf('brasil');
-    const posOpponent = cleaned.indexOf(opponent.toLowerCase());
+    const posOpponent = cleaned.indexOf(cleanOpponent);
 
     if (posBrasil !== -1 && posOpponent !== -1) {
       const firstNumIndex = cleaned.indexOf(matchDigits[0]);

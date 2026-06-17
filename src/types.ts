@@ -31,6 +31,8 @@ export interface Lead {
   createdAtForSorting: number; // millisecond timestamp
   palpitePlacar?: string;
   rawPalpitePlacar?: string;
+  opponent?: string;
+  game?: string;
 }
 
 export interface LoadingStatus {

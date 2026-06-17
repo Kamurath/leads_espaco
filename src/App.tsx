@@ -133,7 +133,8 @@ export default function App() {
         spreadsheetIds = activeSubTab === 'copa'
           ? [
               "1xzgGDSsdxyP6x6Hv_EQase_i06o81ykkRo1UVUwKm9g", // Brasil x Marrocos
-              "1HJf6C0SvinAZHtNoaOtJS3qzoGGkJ8d7IHNpgbDchs0"  // Brasil x Haiti
+              "1HJf6C0SvinAZHtNoaOtJS3qzoGGkJ8d7IHNpgbDchs0", // Brasil x Haiti
+              "1JH2paK9E3Yg4tordB9FXI9x7k9K3amAM8yhkX8fwsl4"  // Brasil x Escócia
             ]
           : ["1DHuCarVu-zAvNOa5ooaRDVFVswyphjplhU_0ipgpRgk"];
       } else {
@@ -219,9 +220,11 @@ export default function App() {
             h.includes('placar') || 
             h.includes('brasil_x_marrocos') || 
             h.includes('brasil_x_haiti') || 
+            h.includes('brasil_x_escocia') || 
             h.includes('jogo_de_hoje') ||
             h.includes('marrocos') ||
-            h.includes('haiti')
+            h.includes('haiti') ||
+            h.includes('escocia')
           );
 
           for (let r = 1; r < rows.length; r++) {
@@ -241,6 +244,8 @@ export default function App() {
             let opponent = "Marrocos";
             if (spreadsheetId === "1HJf6C0SvinAZHtNoaOtJS3qzoGGkJ8d7IHNpgbDchs0" || headers.some(h => h.includes('haiti'))) {
               opponent = "Haiti";
+            } else if (spreadsheetId === "1JH2paK9E3Yg4tordB9FXI9x7k9K3amAM8yhkX8fwsl4" || headers.some(h => h.includes('escocia'))) {
+              opponent = "Escócia";
             }
             let palpiteRaw = (indexPalpite !== -1 && row[indexPalpite] !== undefined) ? row[indexPalpite].trim() : '';
             let palpitePlacar = palpiteRaw ? translateSoccerGuess(palpiteRaw, opponent) : '';
@@ -286,6 +291,8 @@ export default function App() {
               createdAtForSorting,
               palpitePlacar,
               rawPalpitePlacar: palpiteRaw,
+              opponent,
+              game: `Brasil x ${opponent}`,
             });
           }
         }

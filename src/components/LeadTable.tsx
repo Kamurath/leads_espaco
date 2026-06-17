@@ -29,6 +29,11 @@ export default function LeadTable({
   // Custom Filters
   const [filterCliente, setFilterCliente] = useState<string>('todos');
   const [filterInteresse, setFilterInteresse] = useState<string>('todos');
+  const [filterJogo, setFilterJogo] = useState<string>('todos');
+
+  React.useEffect(() => {
+    setFilterJogo('todos');
+  }, [quixadaSubTab, activeTab]);
   
   // Quick Time Filter Range options: 'hoje' | '7dias' | 'todos'
   const [filterTimeRange, setFilterTimeRange] = useState<'hoje' | '7dias' | 'todos'>('todos');
@@ -229,9 +234,12 @@ export default function LeadTable({
       // 5. Administrative Filter Tab Match
       const matchTab = !isAdmin || activeTab === 'Todas' || lead.unitName === activeTab;
 
-      return matchText && matchCliente && matchInteresse && matchTime && matchTab;
+      // 6. Jogo/Game selection filter match (only applicable for Copa sub-tab of Quixadá)
+      const matchJogo = !isCopaSubTabActive || filterJogo === 'todos' || lead.game === filterJogo;
+
+      return matchText && matchCliente && matchInteresse && matchTime && matchTab && matchJogo;
     });
-  }, [leads, searchQuery, filterCliente, filterInteresse, filterTimeRange, activeTab, isAdmin]);
+  }, [leads, searchQuery, filterCliente, filterInteresse, filterTimeRange, activeTab, isAdmin, filterJogo, isCopaSubTabActive]);
 
   // Pagination orchestrator
   const paginatedLeads = useMemo(() => {
@@ -254,6 +262,11 @@ export default function LeadTable({
 
   const handleInteresseChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setFilterInteresse(e.target.value);
+    setCurrentPage(1);
+  };
+
+  const handleJogoChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setFilterJogo(e.target.value);
     setCurrentPage(1);
   };
 
@@ -456,17 +469,34 @@ export default function LeadTable({
             </select>
 
             {/* Interest Select */}
-            <select
-              id="select-interesse-type"
-              value={filterInteresse}
-              onChange={handleInteresseChange}
-              className="rounded-lg border border-slate-200 bg-white py-1.5 px-2.5 text-xs font-semibold text-slate-700 focus:outline-hidden dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-350 cursor-pointer"
-            >
-              <option value="todos">Todos Interesses</option>
-              <option value="3 Sessões">3 Sessões</option>
-              <option value="Ver Ofertas">Ver Ofertas</option>
-              <option value="Tem dúvidas">Tem dúvidas</option>
-            </select>
+            {!isCopaSubTabActive && (
+              <select
+                id="select-interesse-type"
+                value={filterInteresse}
+                onChange={handleInteresseChange}
+                className="rounded-lg border border-slate-200 bg-white py-1.5 px-2.5 text-xs font-semibold text-slate-700 focus:outline-hidden dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-350 cursor-pointer"
+              >
+                <option value="todos">Todos Interesses</option>
+                <option value="3 Sessões">3 Sessões</option>
+                <option value="Ver Ofertas">Ver Ofertas</option>
+                <option value="Tem dúvidas">Tem dúvidas</option>
+              </select>
+            )}
+
+            {/* Game Select */}
+            {isCopaSubTabActive && (
+              <select
+                id="select-jogo-type"
+                value={filterJogo}
+                onChange={handleJogoChange}
+                className="rounded-lg border border-slate-200 bg-white py-1.5 px-2.5 text-xs font-semibold text-slate-700 focus:outline-hidden dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-350 cursor-pointer"
+              >
+                <option value="todos">Todos os Jogos</option>
+                <option value="Brasil x Marrocos">Brasil x Marrocos</option>
+                <option value="Brasil x Haiti">Brasil x Haiti</option>
+                <option value="Brasil x Escócia">Brasil x Escócia</option>
+              </select>
+            )}
 
           </div>
 
