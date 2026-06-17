@@ -128,14 +128,22 @@ export default function App() {
     const activeSubTab = forceSubTab !== undefined ? forceSubTab : quixadaSubTab;
 
     const fetchPromises = unitsToFetch.map(async (unit) => {
-      let spreadsheetId = SPREADSHEET_MAP[unit.name];
+      let spreadsheetIds: string[] = [];
       if (unit.name === "Espaçolaser | Quixadá") {
-        spreadsheetId = activeSubTab === 'copa'
-          ? "1xzgGDSsdxyP6x6Hv_EQase_i06o81ykkRo1UVUwKm9g"
-          : "1DHuCarVu-zAvNOa5ooaRDVFVswyphjplhU_0ipgpRgk";
+        spreadsheetIds = activeSubTab === 'copa'
+          ? [
+              "1xzgGDSsdxyP6x6Hv_EQase_i06o81ykkRo1UVUwKm9g", // Brasil x Marrocos
+              "1HJf6C0SvinAZHtNoaOtJS3qzoGGkJ8d7IHNpgbDchs0"  // Brasil x Haiti
+            ]
+          : ["1DHuCarVu-zAvNOa5ooaRDVFVswyphjplhU_0ipgpRgk"];
+      } else {
+        const id = SPREADSHEET_MAP[unit.name];
+        if (id) {
+          spreadsheetIds = [id];
+        }
       }
 
-      if (!spreadsheetId) {
+      if (spreadsheetIds.length === 0) {
         statuses.push({
           unitName: unit.name,
           status: 'pending',
@@ -150,130 +158,136 @@ export default function App() {
       });
 
       try {
-        const url = buildCsvUrl(spreadsheetId);
-        const response = await fetch(url);
-        if (!response.ok) {
-          throw new Error(`HTTP status ${response.status}`);
-        }
-
-        const text = await response.text();
-        const rows = parseCSV(text);
-
-        if (rows.length < 2) {
-          const existIdx = statuses.findIndex(s => s.unitName === unit.name);
-          const successObj: LoadingStatus = { unitName: unit.name, status: 'success' };
-          if (existIdx !== -1) statuses[existIdx] = successObj;
-          else statuses.push(successObj);
-          return;
-        }
-
-        const headers = (rows[0] || []).map(h => normalizeHeader(h));
-
-        let indexCreated = headers.findIndex(h => h.includes('created_time') || h === 'created_time');
-        if (indexCreated === -1) indexCreated = 1;
-
-        let indexCliente = headers.findIndex(h => h.includes('voce_ja_e_cliente_espacolaser'));
-        if (indexCliente === -1) indexCliente = 12;
-
-        let indexInteresse = headers.findIndex(h => h.includes('como_posso_te_ajudar_hoje'));
-        if (indexInteresse === -1) indexInteresse = 13;
-
-        let indexNome = headers.findIndex(h => {
-          const val = h.toLowerCase().trim();
-          return val === 'nome_completo' ||
-                 val === 'nome' ||
-                 val === 'full_name' ||
-                 val === 'fullname' ||
-                 val === 'customer_name' ||
-                 val === 'lead_name';
-        });
-        if (indexNome === -1) {
-          indexNome = headers.findIndex(h => {
-            const val = h.toLowerCase().trim();
-            return val.includes('nome_completo') ||
-                   val.includes('nome') ||
-                   val.includes('full_name') ||
-                   val.includes('fullname') ||
-                   val.includes('customer_name') ||
-                   val.includes('lead_name');
-          });
-        }
-        if (indexNome === -1) indexNome = 14;
-
-        let indexWhatsApp = headers.findIndex(h => h.includes('numero_do_whatsapp') || h === 'whatsapp' || h === 'telefone' || h === 'phone');
-        if (indexWhatsApp === -1) indexWhatsApp = 15;
-
-        let indexStatus = headers.findIndex(h => h === 'lead_status' || h === 'status');
-        if (indexStatus === -1) indexStatus = 16;
-
-        // 1. Identify soccer palpite guess column index
-        let indexPalpite = headers.findIndex(h => 
-          h.includes('palpite') || 
-          h.includes('placar') || 
-          h.includes('brasil_x_marrocos') || 
-          h.includes('jogo_de_hoje') ||
-          h.includes('marrocos')
+        const fetchResults = await Promise.all(
+          spreadsheetIds.map(async (spreadsheetId) => {
+            const url = buildCsvUrl(spreadsheetId);
+            const response = await fetch(url);
+            if (!response.ok) {
+              throw new Error(`HTTP status ${response.status}`);
+            }
+            const text = await response.text();
+            const rows = parseCSV(text);
+            return { spreadsheetId, rows };
+          })
         );
 
-        for (let r = 1; r < rows.length; r++) {
-          const row = rows[r];
-          if (!row || row.length === 0) continue;
+        for (const { spreadsheetId, rows } of fetchResults) {
+          if (rows.length < 2) continue;
 
-          if (isTestLead(row)) continue;
+          const headers = (rows[0] || []).map(h => normalizeHeader(h));
 
-          let createdRaw = (row[indexCreated] !== undefined) ? row[indexCreated].trim() : '';
-          let clienteRaw = (row[indexCliente] !== undefined) ? row[indexCliente].trim() : '';
-          let interesseRaw = (row[indexInteresse] !== undefined) ? row[indexInteresse].trim() : '';
-          let nomeRaw = (row[indexNome] !== undefined) ? row[indexNome].trim() : '';
-          let whatsappRaw = (row[indexWhatsApp] !== undefined) ? row[indexWhatsApp].trim() : '';
-          let statusRaw = (row[indexStatus] !== undefined) ? row[indexStatus].trim() : '';
+          let indexCreated = headers.findIndex(h => h.includes('created_time') || h === 'created_time');
+          if (indexCreated === -1) indexCreated = 1;
 
-          // Extract original and standardized soccer predictions
-          let palpiteRaw = (indexPalpite !== -1 && row[indexPalpite] !== undefined) ? row[indexPalpite].trim() : '';
-          let palpitePlacar = palpiteRaw ? translateSoccerGuess(palpiteRaw) : '';
+          let indexCliente = headers.findIndex(h => h.includes('voce_ja_e_cliente_espacolaser'));
+          if (indexCliente === -1) indexCliente = 12;
 
-          if (isPhone(statusRaw)) {
-            const digitsWhatsApp = whatsappRaw.replace(/\D/g, '');
-            if (digitsWhatsApp.length < 8) {
-              whatsappRaw = statusRaw;
-            }
-            statusRaw = '';
-          }
+          let indexInteresse = headers.findIndex(h => h.includes('como_posso_te_ajudar_hoje'));
+          if (indexInteresse === -1) indexInteresse = 13;
 
-          if (!nomeRaw && !whatsappRaw && !createdRaw) continue;
-
-          const { digits: whatsappDigits, link: whatsappLink } = processWhatsApp(whatsappRaw);
-          const leadUniqueKey = unit.name + createdRaw + whatsappDigits + nomeRaw;
-          
-          if (seenUniqueKeys.has(leadUniqueKey)) continue;
-          seenUniqueKeys.add(leadUniqueKey);
-
-          const { formatted: createdTimeFormatted, timestamp: createdAtForSorting } = formatVerbatimDate(createdRaw);
-          const { label: clienteLabel, color: clienteColor } = normalizeCliente(clienteRaw);
-          const interesseLabel = normalizeInteresse(interesseRaw);
-          const { label: statusLabel, color: statusColor } = normalizeStatus(statusRaw);
-
-          allFetchedLeads.push({
-            id: leadUniqueKey,
-            unitName: unit.name,
-            createdTimeRaw: createdRaw,
-            createdTimeFormatted,
-            clienteRaw,
-            clienteLabel,
-            clienteColor,
-            interesseRaw,
-            interesseLabel,
-            nome: nomeRaw || 'Nome não informado',
-            whatsappRaw: whatsappRaw || 'Sem contato',
-            whatsappDigits,
-            whatsappLink,
-            statusRaw: statusRaw || '',
-            statusLabel: statusRaw ? statusLabel : 'Sem status',
-            statusColor,
-            createdAtForSorting,
-            palpitePlacar,
-            rawPalpitePlacar: palpiteRaw,
+          let indexNome = headers.findIndex(h => {
+            const val = h.toLowerCase().trim();
+            return val === 'nome_completo' ||
+                   val === 'nome' ||
+                   val === 'full_name' ||
+                   val === 'fullname' ||
+                   val === 'customer_name' ||
+                   val === 'lead_name';
           });
+          if (indexNome === -1) {
+            indexNome = headers.findIndex(h => {
+              const val = h.toLowerCase().trim();
+              return val.includes('nome_completo') ||
+                     val.includes('nome') ||
+                     val.includes('full_name') ||
+                     val.includes('fullname') ||
+                     val.includes('customer_name') ||
+                     val.includes('lead_name');
+            });
+          }
+          if (indexNome === -1) indexNome = 14;
+
+          let indexWhatsApp = headers.findIndex(h => h.includes('numero_do_whatsapp') || h === 'whatsapp' || h === 'telefone' || h === 'phone');
+          if (indexWhatsApp === -1) indexWhatsApp = 15;
+
+          let indexStatus = headers.findIndex(h => h === 'lead_status' || h === 'status');
+          if (indexStatus === -1) indexStatus = 16;
+
+          // 1. Identify soccer palpite guess column index
+          let indexPalpite = headers.findIndex(h => 
+            h.includes('palpite') || 
+            h.includes('placar') || 
+            h.includes('brasil_x_marrocos') || 
+            h.includes('brasil_x_haiti') || 
+            h.includes('jogo_de_hoje') ||
+            h.includes('marrocos') ||
+            h.includes('haiti')
+          );
+
+          for (let r = 1; r < rows.length; r++) {
+            const row = rows[r];
+            if (!row || row.length === 0) continue;
+
+            if (isTestLead(row)) continue;
+
+            let createdRaw = (row[indexCreated] !== undefined) ? row[indexCreated].trim() : '';
+            let clienteRaw = (row[indexCliente] !== undefined) ? row[indexCliente].trim() : '';
+            let interesseRaw = (row[indexInteresse] !== undefined) ? row[indexInteresse].trim() : '';
+            let nomeRaw = (row[indexNome] !== undefined) ? row[indexNome].trim() : '';
+            let whatsappRaw = (row[indexWhatsApp] !== undefined) ? row[indexWhatsApp].trim() : '';
+            let statusRaw = (row[indexStatus] !== undefined) ? row[indexStatus].trim() : '';
+
+            // Extract original and standardized soccer predictions
+            let opponent = "Marrocos";
+            if (spreadsheetId === "1HJf6C0SvinAZHtNoaOtJS3qzoGGkJ8d7IHNpgbDchs0" || headers.some(h => h.includes('haiti'))) {
+              opponent = "Haiti";
+            }
+            let palpiteRaw = (indexPalpite !== -1 && row[indexPalpite] !== undefined) ? row[indexPalpite].trim() : '';
+            let palpitePlacar = palpiteRaw ? translateSoccerGuess(palpiteRaw, opponent) : '';
+
+            if (isPhone(statusRaw)) {
+              const digitsWhatsApp = whatsappRaw.replace(/\D/g, '');
+              if (digitsWhatsApp.length < 8) {
+                whatsappRaw = statusRaw;
+              }
+              statusRaw = '';
+            }
+
+            if (!nomeRaw && !whatsappRaw && !createdRaw) continue;
+
+            const { digits: whatsappDigits, link: whatsappLink } = processWhatsApp(whatsappRaw);
+            const leadUniqueKey = unit.name + "_" + createdRaw + "_" + whatsappDigits + "_" + nomeRaw + "_" + opponent;
+            
+            if (seenUniqueKeys.has(leadUniqueKey)) continue;
+            seenUniqueKeys.add(leadUniqueKey);
+
+            const { formatted: createdTimeFormatted, timestamp: createdAtForSorting } = formatVerbatimDate(createdRaw);
+            const { label: clienteLabel, color: clienteColor } = normalizeCliente(clienteRaw);
+            const interesseLabel = normalizeInteresse(interesseRaw);
+            const { label: statusLabel, color: statusColor } = normalizeStatus(statusRaw);
+
+            allFetchedLeads.push({
+              id: leadUniqueKey,
+              unitName: unit.name,
+              createdTimeRaw: createdRaw,
+              createdTimeFormatted,
+              clienteRaw,
+              clienteLabel,
+              clienteColor,
+              interesseRaw,
+              interesseLabel,
+              nome: nomeRaw || 'Nome não informado',
+              whatsappRaw: whatsappRaw || 'Sem contato',
+              whatsappDigits,
+              whatsappLink,
+              statusRaw: statusRaw || '',
+              statusLabel: statusRaw ? statusLabel : 'Sem status',
+              statusColor,
+              createdAtForSorting,
+              palpitePlacar,
+              rawPalpitePlacar: palpiteRaw,
+            });
+          }
         }
 
         const existIdx = statuses.findIndex(s => s.unitName === unit.name);

@@ -350,10 +350,12 @@ export function processWhatsApp(val: string): { digits: string; link: string } {
 }
 
 // Translate and normalize different sport guess formats into almost standardized visual formats.
-export function translateSoccerGuess(raw: string): string {
+export function translateSoccerGuess(raw: string, opponent: string = "Marrocos"): string {
   if (!raw) return '';
   const cleaned = raw.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
   if (!cleaned) return '';
+
+  const opponentEmoji = opponent.toLowerCase() === 'haiti' ? '🇭🇹' : '🇲🇦';
 
   // Match all numbers/digits in the sequence
   const matchDigits = cleaned.match(/\d+/g);
@@ -363,33 +365,33 @@ export function translateSoccerGuess(raw: string): string {
     const num2 = parseInt(matchDigits[1]);
 
     let scoreBrasil = num1;
-    let scoreMarrocos = num2;
+    let scoreOpponent = num2;
 
     // Distinguish if order is reverse or normal e.g., "marrocos_0_brasil_1" or "brasil_1_marrocos_0"
     const posBrasil = cleaned.indexOf('brasil');
-    const posMarrocos = cleaned.indexOf('marrocos');
+    const posOpponent = cleaned.indexOf(opponent.toLowerCase());
 
-    if (posBrasil !== -1 && posMarrocos !== -1) {
+    if (posBrasil !== -1 && posOpponent !== -1) {
       const firstNumIndex = cleaned.indexOf(matchDigits[0]);
       const secondNumIndex = cleaned.indexOf(matchDigits[1]);
       
       const distB1 = Math.abs(firstNumIndex - posBrasil);
       const distB2 = Math.abs(secondNumIndex - posBrasil);
-      const distM1 = Math.abs(firstNumIndex - posMarrocos);
-      const distM2 = Math.abs(secondNumIndex - posMarrocos);
+      const distM1 = Math.abs(firstNumIndex - posOpponent);
+      const distM2 = Math.abs(secondNumIndex - posOpponent);
 
-      // If first score is closer to Marrocos and second is closer to Brasil, swap
+      // If first score is closer to opponent and second is closer to Brasil, swap
       if (distB1 + distM2 > distB2 + distM1) {
         scoreBrasil = num2;
-        scoreMarrocos = num1;
+        scoreOpponent = num1;
       }
     } else if (cleaned.endsWith('brasil') || cleaned.endsWith('br')) {
       // e.g. "1 a 0 brasil" or "3 x 1 br"
       scoreBrasil = num1;
-      scoreMarrocos = num2;
+      scoreOpponent = num2;
     }
 
-    return `🇧🇷 Brasil ${scoreBrasil} x ${scoreMarrocos} Marrocos 🇲🇦`;
+    return `🇧🇷 Brasil ${scoreBrasil} x ${scoreOpponent} ${opponent} ${opponentEmoji}`;
   }
 
   // Single score guess fallback
