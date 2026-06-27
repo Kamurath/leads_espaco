@@ -134,7 +134,8 @@ export default function App() {
           ? [
               "1xzgGDSsdxyP6x6Hv_EQase_i06o81ykkRo1UVUwKm9g", // Brasil x Marrocos
               "1HJf6C0SvinAZHtNoaOtJS3qzoGGkJ8d7IHNpgbDchs0", // Brasil x Haiti
-              "1JH2paK9E3Yg4tordB9FXI9x7k9K3amAM8yhkX8fwsl4"  // Brasil x Escócia
+              "1JH2paK9E3Yg4tordB9FXI9x7k9K3amAM8yhkX8fwsl4", // Brasil x Escócia
+              "1mVmZ5X2a2vIMFfWfXrwPEv9OutXr54dmrfUTJI-3jec"  // Brasil x Japão
             ]
           : ["1DHuCarVu-zAvNOa5ooaRDVFVswyphjplhU_0ipgpRgk"];
       } else {
@@ -221,10 +222,13 @@ export default function App() {
             h.includes('brasil_x_marrocos') || 
             h.includes('brasil_x_haiti') || 
             h.includes('brasil_x_escocia') || 
+            h.includes('brasil_x_japao') || 
             h.includes('jogo_de_hoje') ||
             h.includes('marrocos') ||
             h.includes('haiti') ||
-            h.includes('escocia')
+            h.includes('escocia') ||
+            h.includes('japao') ||
+            h.includes('japão')
           );
 
           for (let r = 1; r < rows.length; r++) {
@@ -246,6 +250,8 @@ export default function App() {
               opponent = "Haiti";
             } else if (spreadsheetId === "1JH2paK9E3Yg4tordB9FXI9x7k9K3amAM8yhkX8fwsl4" || headers.some(h => h.includes('escocia'))) {
               opponent = "Escócia";
+            } else if (spreadsheetId === "1mVmZ5X2a2vIMFfWfXrwPEv9OutXr54dmrfUTJI-3jec" || headers.some(h => h.includes('japao') || h.includes('japão'))) {
+              opponent = "Japão";
             }
             let palpiteRaw = (indexPalpite !== -1 && row[indexPalpite] !== undefined) ? row[indexPalpite].trim() : '';
             let palpitePlacar = palpiteRaw ? translateSoccerGuess(palpiteRaw, opponent) : '';

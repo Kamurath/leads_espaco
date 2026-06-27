@@ -495,6 +495,7 @@ export default function LeadTable({
                 <option value="Brasil x Marrocos">Brasil x Marrocos</option>
                 <option value="Brasil x Haiti">Brasil x Haiti</option>
                 <option value="Brasil x Escócia">Brasil x Escócia</option>
+                <option value="Brasil x Japão">Brasil x Japão</option>
               </select>
             )}
 

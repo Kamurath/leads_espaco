@@ -361,6 +361,8 @@ export function translateSoccerGuess(raw: string, opponent: string = "Marrocos")
     opponentEmoji = '🇭🇹';
   } else if (cleanOpponent === 'escocia') {
     opponentEmoji = '🏴󠁧󠁢󠁳󠁣󠁴󠁿';
+  } else if (cleanOpponent === 'japao') {
+    opponentEmoji = '🇯🇵';
   }
 
   // Match all numbers/digits in the sequence
